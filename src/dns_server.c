@@ -802,9 +802,10 @@ static void _dns_server_audit_log(struct dns_server_post_context *context)
 	snprintf(req_time, sizeof(req_time), "[%.4d-%.2d-%.2d %.2d:%.2d:%.2d,%.3d]", tm.year, tm.mon, tm.mday, tm.hour,
 			 tm.min, tm.sec, tm.usec / 1000);
 
-	tlog_printf(dns_audit, "%s %s query %s, type %d, time %lums, speed: %.1fms, result %s\n", req_time, req_host,
+	tlog_printf(dns_audit, "%s %s query %s, type %d, time %lums, speed: %.1fms, group %s, cache %d, result %s\n", req_time, req_host,
 				request->domain, request->qtype, get_tick_count() - request->send_tick,
-				((float)request->ping_time) / 10, req_result);
+				((float)request->ping_time) / 10, request->dns_group_name[0] != '\0' ? request->dns_group_name : "default",
+                req_result);
 }
 
 static void _dns_rrs_result_log(struct dns_server_post_context *context, struct dns_ip_address *addr_map)
@@ -3374,7 +3375,7 @@ static int _dns_server_reply_passthrough(struct dns_server_post_context *context
 		}
 		_dns_reply_inpacket(request, context->inpacket, context->inpacket_len);
 
-		tlog(TLOG_INFO, "result: %s, client: %s, qtype: %d, id: %d, group: %s, time: %lums", request->domain,
+		tlog(TLOG_INFO, "[wg] domain: %s, client: %s, qtype: %d, id: %d, group: %s, time: %lums", request->domain,
 			 get_host_by_addr(clientip, sizeof(clientip), (struct sockaddr *)&request->addr), request->qtype,
 			 request->id, request->dns_group_name[0] != '\0' ? request->dns_group_name : "default",
 			 get_tick_count() - request->send_tick);
@@ -3486,7 +3487,7 @@ static int dns_server_resolve_callback(const char *domain, dns_result_type rtype
 	}
 
 	if (rtype == DNS_QUERY_RESULT) {
-		tlog(TLOG_DEBUG, "query result from server %s:%d, type: %d", dns_client_get_server_ip(server_info),
+		tlog(TLOG_INFO, "query %s result from server %s:%d, type: %d",domain, dns_client_get_server_ip(server_info),
 			 dns_client_get_server_port(server_info), dns_client_get_server_type(server_info));
 
 		if (request->passthrough == 1 && atomic_read(&request->notified) == 0) {
@@ -5278,6 +5279,7 @@ static int _dns_server_do_query(struct dns_request *request, int skip_notify_eve
 	/* process cache */
 	if (request->prefetch == 0 && request->dualstack_selection_query == 0) {
 		if (_dns_server_process_cache(request) == 0) {
+            tlog(TLOG_INFO, "[wg] geted from cache  %s\n",request->domain);
 			goto clean_exit;
 		}
 	}

@@ -581,6 +581,7 @@ static int _config_server(int argc, char *argv[], dns_server_type_t type, int de
 
 		switch (opt) {
 		case 'b': {
+            tlog(TLOG_INFO, "[wg] DNSSERVER_FLAG_BLACKLIST_IP \n");
 			result_flag |= DNSSERVER_FLAG_BLACKLIST_IP;
 			break;
 		}
@@ -671,7 +672,7 @@ static int _config_server(int argc, char *argv[], dns_server_type_t type, int de
 	server->ttl = ttl;
 	server->drop_packet_latency_ms = drop_packet_latency_ms;
 	dns_conf_server_num++;
-	tlog(TLOG_DEBUG, "add server %s, flag: %X, ttl: %d", ip, result_flag, ttl);
+	tlog(TLOG_INFO, "[wg] add server %s %d, flag: %X, ttl: %d", ip,index, result_flag, ttl);
 
 	if (is_bootstrap_dns) {
 		server->server_flag |= SERVER_FLAG_EXCLUDE_DEFAULT;
@@ -2538,7 +2539,6 @@ static int _config_blacklist_ip(void *data, int argc, char *argv[])
 	if (argc <= 1) {
 		return -1;
 	}
-
 	return _config_iplist_rule(argv[1], ADDRESS_RULE_BLACKLIST);
 }
 
